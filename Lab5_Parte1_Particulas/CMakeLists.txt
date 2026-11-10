@@ -5,7 +5,8 @@ project(Lab5_Parte1_Particulas LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(Lab5_Parte1_Particulas main.cpp)
+add_executable(Lab5_Parte1_Particulas main.cpp
+    Vector2D.h)
 
 include(GNUInstallDirs)
 install(TARGETS Lab5_Parte1_Particulas
