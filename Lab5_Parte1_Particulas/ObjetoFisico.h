@@ -1,0 +1,4 @@
+#ifndef OBJETOFISICO_H
+#define OBJETOFISICO_H
+
+#endif // OBJETOFISICO_H
