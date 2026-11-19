@@ -5,78 +5,89 @@
 #include "Particula.h"
 #include "Obstaculo.h"
 
-// Dimensiones del área cerrada (Caja)[cite: 3]
 const double CAJA_ANCHO = 100.0;
 const double CAJA_ALTO = 100.0;
-const double DT = 0.01;      // Paso de tiempo en segundos[cite: 1, 2]
-const double T_MAX = 10.0;    // Duración total de la simulación
+const double DT = 0.01;
+const double T_MAX = 15.0; // Más tiempo para observar múltiples rebotes y fusiones
 
-// Rebote elástico contra paredes de la caja[cite: 3, 4]
-void manejarColisionParedes(Particula& p) {
+void manejarColisionParedes(Particula& p, size_t id, double t, std::ofstream& archivo) {
     Vector2D pos = p.getPosicion();
     Vector2D vel = p.getVelocidad();
     double r = p.getRadio();
+    bool choco = false;
 
     if (pos.x - r <= 0) {
         pos.x = r;
         vel.x = -vel.x;
+        choco = true;
     } else if (pos.x + r >= CAJA_ANCHO) {
         pos.x = CAJA_ANCHO - r;
         vel.x = -vel.x;
+        choco = true;
     }
 
     if (pos.y - r <= 0) {
         pos.y = r;
         vel.y = -vel.y;
+        choco = true;
     } else if (pos.y + r >= CAJA_ALTO) {
         pos.y = CAJA_ALTO - r;
         vel.y = -vel.y;
+        choco = true;
     }
 
-    p.setPosicion(pos);
-    p.setVelocidad(vel);
+    if (choco) {
+        p.setPosicion(pos);
+        p.setVelocidad(vel);
+        archivo << "# COLISION_PARED | t=" << t << "s | Particula=" << id << "\n";
+    }
 }
 
-// Rebote inelástico contra obstáculos estáticos[cite: 3]
-void manejarColisionObstaculos(Particula& p, const std::vector<Obstaculo>& obstaculos) {
-    for (const auto& obs : obstaculos) {
-        if (obs.detectarColision(p)) {
+void manejarColisionObstaculos(Particula& p, size_t id, const std::vector<Obstaculo>& obstaculos, double t, std::ofstream& archivo) {
+    for (size_t k = 0; k < obstaculos.size(); ++k) {
+        int lado = obstaculos[k].detectarLadoColision(p);
+        if (lado != 0) {
             Vector2D vel = p.getVelocidad();
-            double e = obs.getE();
+            Vector2D pos = p.getPosicion();
+            double e = obstaculos[k].getE();
 
-            // Inversión con pérdida de energía (coeficiente e)[cite: 3]
-            vel.x = -e * vel.x;
-            vel.y = -e * vel.y;
+            if (lado == 1) { // Cara izquierda o derecha -> solo invierte Vx
+                vel.x = -e * vel.x;
+                pos.x += (vel.x > 0) ? 0.5 : -0.5; // Evitar que quede atrapada adentro
+            } else if (lado == 2) { // Cara superior o inferior -> solo invierte Vy
+                vel.y = -e * vel.y;
+                pos.y += (vel.y > 0) ? 0.5 : -0.5;
+            }
+
+            p.setPosicion(pos);
             p.setVelocidad(vel);
+            archivo << "# COLISION_OBSTACULO | t=" << t << "s | Particula=" << id << " | Obstaculo=" << k << "\n";
             break;
         }
     }
 }
 
 int main() {
-    // 1. Inicializar los 4 obstáculos estáticos dentro de la caja[cite: 3, 4]
     std::vector<Obstaculo> obstaculos = {
-        Obstaculo(Vector2D(20, 20), 10, 10, 0.8),
-        Obstaculo(Vector2D(70, 20), 10, 10, 0.8),
-        Obstaculo(Vector2D(20, 70), 10, 10, 0.8),
-        Obstaculo(Vector2D(70, 70), 10, 10, 0.8)
+        Obstaculo(Vector2D(25, 25), 10, 10, 0.8),
+        Obstaculo(Vector2D(65, 25), 10, 10, 0.8),
+        Obstaculo(Vector2D(25, 65), 10, 10, 0.8),
+        Obstaculo(Vector2D(65, 65), 10, 10, 0.8)
     };
 
-    // 2. Inicializar al menos 4 partículas simultáneas[cite: 4]
+    // Velocidades iniciales configuradas para rebotar en ángulos y cruzarse en el centro
     std::vector<Particula> particulas = {
-        Particula(Vector2D(10, 10), Vector2D(15, 12), 2.0, 1.5),
-        Particula(Vector2D(90, 10), Vector2D(-10, 18), 1.5, 1.2),
-        Particula(Vector2D(10, 90), Vector2D(18, -14), 3.0, 1.8),
-        Particula(Vector2D(90, 90), Vector2D(-12, -15), 2.5, 1.6)
+        Particula(Vector2D(10, 15), Vector2D(18, 12), 2.0, 1.5),
+        Particula(Vector2D(90, 15), Vector2D(-16, 14), 1.5, 1.5),
+        Particula(Vector2D(15, 90), Vector2D(14, -18), 3.0, 1.8),
+        Particula(Vector2D(85, 85), Vector2D(-15, -13), 2.5, 1.6)
     };
 
-    // 3. Crear archivo de salida TXT[cite: 1, 4]
     std::ofstream archivo("simulacion_particulas.txt");
     archivo << "# Tiempo | Particula_ID | Pos_X | Pos_Y\n";
 
     double t = 0.0;
     while (t <= T_MAX) {
-        // Escribir estado actual en el archivo[cite: 4]
         for (size_t i = 0; i < particulas.size(); ++i) {
             if (particulas[i].isActiva()) {
                 Vector2D pos = particulas[i].getPosicion();
@@ -85,42 +96,34 @@ int main() {
             }
         }
 
-        // Actualizar posiciones[cite: 2, 4]
-        for (auto& p : particulas) {
-            if (p.isActiva()) {
-                p.actualizarPosicion(DT);
-                manejarColisionParedes(p);
-                manejarColisionObstaculos(p, obstaculos);
+        for (size_t i = 0; i < particulas.size(); ++i) {
+            if (particulas[i].isActiva()) {
+                particulas[i].actualizarPosicion(DT);
+                manejarColisionParedes(particulas[i], i, t, archivo);
+                manejarColisionObstaculos(particulas[i], i, obstaculos, t, archivo);
             }
         }
 
-        // Verificar colisiones entre partículas (Completamente inelásticas -> Fusión)[cite: 3]
         for (size_t i = 0; i < particulas.size(); ++i) {
             if (!particulas[i].isActiva()) continue;
             for (size_t j = i + 1; j < particulas.size(); ++j) {
                 if (!particulas[j].isActiva()) continue;
 
                 Vector2D diff = particulas[i].getPosicion() - particulas[j].getPosicion();
-                double dist = diff.magnitud();
-                double sumaRadios = particulas[i].getRadio() + particulas[j].getRadio();
-
-                if (dist <= sumaRadios) {
-                    // Se fusionan produciendo una nueva partícula[cite: 3]
+                if (diff.magnitud() <= (particulas[i].getRadio() + particulas[j].getRadio())) {
                     Particula nueva = particulas[i].fusionarCon(particulas[j]);
                     particulas[i].desactivar();
                     particulas[j].desactivar();
                     particulas.push_back(nueva);
-                    std::cout << "[COLISIÓN PARTÍCULAS] Instante t=" << t
-                              << "s: Fusión efectuada." << std::endl;
+                    archivo << "# COLISION_PARTICULAS (FUSION) | t=" << t << "s | P" << i << " + P" << j << " -> P" << (particulas.size() - 1) << "\n";
                     break;
                 }
             }
         }
-
         t += DT;
     }
 
     archivo.close();
-    std::cout << "Simulación finalizada. Datos guardados en 'simulacion_particulas.txt'." << std::endl;
+    std::cout << "Simulación completada." << std::endl;
     return 0;
 }
