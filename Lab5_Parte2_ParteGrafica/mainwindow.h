@@ -2,22 +2,33 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QGraphicsView>
+#include <QGraphicsScene>
+#include <QDoubleSpinBox>
+#include <QPushButton>
+#include <QLabel>
+#include "ControladorJuego.h"
 
-QT_BEGIN_NAMESPACE
-namespace Ui {
-class MainWindow;
-}
-QT_END_NAMESPACE
-
-class MainWindow : public QMainWindow
-{
+class MainWindow : public QMainWindow {
     Q_OBJECT
+private:
+    QGraphicsScene* escena;
+    QGraphicsView* vista;
+    ControladorJuego* controlador;
+
+    QLabel* lblTurno;
+    QDoubleSpinBox* spinAngulo;
+    QDoubleSpinBox* spinVelocidad;
+    QPushButton* btnDisparar;
 
 public:
-    explicit MainWindow(QWidget *parent = nullptr);
-    ~MainWindow() override;
+    MainWindow(QWidget* parent = nullptr);
+    ~MainWindow();
 
-private:
-    Ui::MainWindow *ui;
+private slots:
+    void onDispararClicked();
+    void onTurnoCambiado(int turno);
+    void onJuegoTerminado(int ganador);
 };
+
 #endif // MAINWINDOW_H
