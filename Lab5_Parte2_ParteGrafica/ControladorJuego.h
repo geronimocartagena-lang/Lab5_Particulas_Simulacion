@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QGraphicsScene>
+#include <QGraphicsRectItem>
 #include <QTimer>
 #include <vector>
 #include "Proyectil.h"
@@ -19,11 +20,16 @@ private:
     double dt;
     double gravedad;
     double factorDanio;
+    double tiempoVuelo;
+    double cooldownGolpe;
 
     double anchoEscenario;
     double altoEscenario;
+    double nivelSuelo;
 
     Proyectil* proyectilActivo;
+    QGraphicsRectItem* canonJ1;
+    QGraphicsRectItem* canonJ2;
     std::vector<Estructura*> estructuras;
     std::vector<Rival*> rivales;
 
@@ -35,6 +41,7 @@ public:
     int getTurnoActual() const { return turnoActual; }
     bool hayDisparoEnCurso() const { return proyectilActivo && proyectilActivo->isActivo(); }
 
+    void actualizarAnguloCanon(double angulo);
     void iniciarTurno(double angulo, double velocidad);
     void cambiarTurno();
     int verificarVictoria() const;

@@ -1,12 +1,18 @@
 #include "ControladorJuego.h"
-#include <QGraphicsRectItem>
+#include <QLinearGradient>
+#include <cmath>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 ControladorJuego::ControladorJuego(QGraphicsScene* scene, QObject* parent)
     : QObject(parent), escena(scene), turnoActual(1), dt(0.02), gravedad(180.0),
-    factorDanio(0.08), anchoEscenario(900.0), altoEscenario(450.0), proyectilActivo(nullptr) {
+    factorDanio(0.03), tiempoVuelo(0.0), cooldownGolpe(0.0),
+    anchoEscenario(920.0), altoEscenario(470.0), nivelSuelo(435.0),
+    proyectilActivo(nullptr), canonJ1(nullptr), canonJ2(nullptr) {
 
     escena->setSceneRect(0, 0, anchoEscenario, altoEscenario);
-    escena->setBackgroundBrush(Qt::white); // 1. Fondo blanco
     construirEscenario();
 
     timer = new QTimer(this);
@@ -19,39 +25,63 @@ void ControladorJuego::construirEscenario() {
     estructuras.clear();
     rivales.clear();
 
-    // Borde exterior de la caja
-    escena->addRect(0, 0, anchoEscenario, altoEscenario, QPen(Qt::black, 3));
+    // Fondo cielo + terreno
+    QLinearGradient cielo(0, 0, 0, nivelSuelo);
+    cielo.setColorAt(0, QColor(225, 240, 255));
+    cielo.setColorAt(1, QColor(248, 251, 255));
+    escena->addRect(0, 0, anchoEscenario, nivelSuelo, QPen(Qt::NoPen), QBrush(cielo));
 
-    // Plataformas de los cañones
-    escena->addRect(0, 210, 45, 12, QPen(Qt::black), QBrush(Qt::lightGray));
-    escena->addRect(anchoEscenario - 45, 210, 45, 12, QPen(Qt::black), QBrush(Qt::lightGray));
+    escena->addRect(0, nivelSuelo, anchoEscenario, altoEscenario - nivelSuelo,
+                    QPen(QColor(60, 90, 50), 2), QBrush(QColor(115, 165, 95)));
+    escena->addRect(0, 0, anchoEscenario, altoEscenario, QPen(QColor(40, 45, 55), 3));
 
-    // 2. Cuadrados lanzadores (de donde sale la bola)
-    escena->addRect(10, 185, 25, 25, QPen(Qt::black, 2), QBrush(QColor(26, 95, 180))); // Cuadrado Jugador 1
-    escena->addRect(anchoEscenario - 35, 185, 25, 25, QPen(Qt::black, 2), QBrush(QColor(192, 28, 40))); // Cuadrado Jugador 2
+    // Torres laterales
+    escena->addRect(5, 205, 38, nivelSuelo - 205, QPen(Qt::black, 1.5), QBrush(QColor(130, 140, 150)));
+    escena->addRect(anchoEscenario - 43, 205, 38, nivelSuelo - 205, QPen(Qt::black, 1.5), QBrush(QColor(130, 140, 150)));
 
-    // --- BASE JUGADOR 1 (Izquierda) ---
-    estructuras.push_back(new Estructura(Vector2D(60, 320), 60, 130, 200, 0.6, 1));
-    estructuras.push_back(new Estructura(Vector2D(220, 320), 60, 130, 200, 0.6, 1));
-    estructuras.push_back(new Estructura(Vector2D(60, 270), 220, 50, 100, 0.6, 1));
-    rivales.push_back(new Rival(Vector2D(150, 370), 40, 80, 1));
+    // Cañones orientables (tubo largo con pivote en la base)
+    canonJ1 = escena->addRect(0, -6, 36, 12, QPen(Qt::black, 1.5), QBrush(QColor(26, 95, 180)));
+    canonJ1->setPos(24, 192);
+    canonJ1->setRotation(-45.0);
 
-    // --- BASE JUGADOR 2 (Derecha) ---
-    estructuras.push_back(new Estructura(Vector2D(620, 320), 60, 130, 200, 0.6, 2));
-    estructuras.push_back(new Estructura(Vector2D(780, 320), 60, 130, 200, 0.6, 2));
-    estructuras.push_back(new Estructura(Vector2D(620, 270), 220, 50, 100, 0.6, 2));
-    rivales.push_back(new Rival(Vector2D(710, 370), 40, 80, 2));
+    canonJ2 = escena->addRect(-36, -6, 36, 12, QPen(Qt::black, 1.5), QBrush(QColor(192, 28, 40)));
+    canonJ2->setPos(anchoEscenario - 24, 192);
+    canonJ2->setRotation(45.0);
+
+    // Bases cuadradas fijas sobre las torres (pivote visual)
+    escena->addRect(12, 181, 24, 24, QPen(Qt::black, 2), QBrush(QColor(45, 55, 70)));
+    escena->addRect(anchoEscenario - 36, 181, 24, 24, QPen(Qt::black, 2), QBrush(QColor(45, 55, 70)));
+
+    // --- FORTALEZA JUGADOR 1 ---
+    estructuras.push_back(new Estructura(Vector2D(65, 305), 55, 130, 200, 0.6, 1));
+    estructuras.push_back(new Estructura(Vector2D(225, 305), 55, 130, 200, 0.6, 1));
+    estructuras.push_back(new Estructura(Vector2D(65, 260), 215, 45, 100, 0.6, 1));
+    rivales.push_back(new Rival(Vector2D(152, 357), 40, 78, 1));
+
+    // --- FORTALEZA JUGADOR 2 ---
+    estructuras.push_back(new Estructura(Vector2D(640, 305), 55, 130, 200, 0.6, 2));
+    estructuras.push_back(new Estructura(Vector2D(800, 305), 55, 130, 200, 0.6, 2));
+    estructuras.push_back(new Estructura(Vector2D(640, 260), 215, 45, 100, 0.6, 2));
+    rivales.push_back(new Rival(Vector2D(727, 357), 40, 78, 2));
 
     for (auto* est : estructuras) escena->addItem(est);
     for (auto* riv : rivales) escena->addItem(riv);
 
-    // Proyectil
     proyectilActivo = new Proyectil(Vector2D(0, 0), 2.5, 10.0);
     escena->addItem(proyectilActivo);
 }
 
+void ControladorJuego::actualizarAnguloCanon(double angulo) {
+    if (turnoActual == 1 && canonJ1) {
+        canonJ1->setRotation(-angulo); // Negativo en Qt apunta hacia arriba
+    } else if (turnoActual == 2 && canonJ2) {
+        canonJ2->setRotation(angulo);  // Positivo en Qt apunta hacia arriba y a la izquierda
+    }
+}
+
 void ControladorJuego::reiniciarJuego() {
     turnoActual = 1;
+    tiempoVuelo = 0.0;
     construirEscenario();
     emit turnoCambiado(turnoActual);
 }
@@ -59,21 +89,41 @@ void ControladorJuego::reiniciarJuego() {
 void ControladorJuego::iniciarTurno(double angulo, double velocidad) {
     if (proyectilActivo->isActivo() || verificarVictoria() != 0) return;
 
+    tiempoVuelo = 0.0;
+    cooldownGolpe = 0.0;
+    actualizarAnguloCanon(angulo);
+
+    double rad = angulo * M_PI / 180.0;
+    double largoTubo = 36.0;
+    double r = proyectilActivo->getRadio();
+
     if (turnoActual == 1) {
-        // Sale desde el borde del cuadrado azul izquierdo
-        proyectilActivo->lanzar(Vector2D(38, 185), angulo, velocidad, true);
+        // Calcular punta exacta del cañón izquierdo
+        double puntaX = 24.0 + largoTubo * std::cos(rad) - r;
+        double puntaY = 192.0 - largoTubo * std::sin(rad) - r;
+        proyectilActivo->lanzar(Vector2D(puntaX, puntaY), angulo, velocidad, true);
     } else {
-        // Sale desde el borde del cuadrado rojo derecho
-        proyectilActivo->lanzar(Vector2D(anchoEscenario - 58, 185), angulo, velocidad, false);
+        // Calcular punta exacta del cañón derecho
+        double puntaX = (anchoEscenario - 24.0) - largoTubo * std::cos(rad) - r;
+        double puntaY = 192.0 - largoTubo * std::sin(rad) - r;
+        proyectilActivo->lanzar(Vector2D(puntaX, puntaY), angulo, velocidad, false);
     }
 }
 
 void ControladorJuego::actualizarFisica() {
     if (!proyectilActivo || !proyectilActivo->isActivo()) return;
 
+    tiempoVuelo += dt;
+    if (cooldownGolpe > 0) cooldownGolpe -= dt;
+
+    if (tiempoVuelo >= 6.0) {
+        proyectilActivo->desactivar();
+        cambiarTurno();
+        return;
+    }
+
     proyectilActivo->actualizarPosicion(dt, gravedad);
 
-    // 1. Verificar colisión contra rivales (Solo daña al rival contrario)
     for (auto* riv : rivales) {
         if (riv->getJugadorDuenio() != turnoActual && riv->detectarColision(*proyectilActivo)) {
             riv->recibirImpacto();
@@ -86,22 +136,20 @@ void ControladorJuego::actualizarFisica() {
         }
     }
 
-    // 2. Verificar colisión contra estructuras
     for (auto* est : estructuras) {
         int lado = est->detectarColision(*proyectilActivo);
         if (lado != 0) {
-            // 3. Solo inflige daño si la estructura pertenece al jugador rival
-            if (est->getJugadorDuenio() != turnoActual) {
+            if (est->getJugadorDuenio() != turnoActual && cooldownGolpe <= 0) {
                 double momento = proyectilActivo->calcularMomento();
                 est->recibirDanio(momento, factorDanio);
+                cooldownGolpe = 0.25;
             }
             proyectilActivo->rebotarObstaculo(lado, est->getE());
             break;
         }
     }
 
-    // 3. Colisión contra paredes de la caja
-    bool detenido = proyectilActivo->rebotarBorde(anchoEscenario, altoEscenario);
+    bool detenido = proyectilActivo->rebotarBorde(anchoEscenario, nivelSuelo);
     if (detenido) {
         proyectilActivo->desactivar();
         cambiarTurno();

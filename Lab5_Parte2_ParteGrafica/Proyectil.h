@@ -30,7 +30,6 @@ public:
         double rad = anguloGrados * M_PI / 180.0;
         double dirX = haciaDerecha ? 1.0 : -1.0;
 
-        // En Qt el eje Y crece hacia abajo, por eso Vy inicial es negativa
         velocidad.x = dirX * v0 * std::cos(rad);
         velocidad.y = -v0 * std::sin(rad);
 
@@ -47,14 +46,11 @@ public:
         actualizarGrafico();
     }
 
-    // Momento lineal: p = m * |v|
     double calcularMomento() const {
         return masa * velocidad.magnitud();
     }
 
-    // Colisión elástica contra los límites del escenario (caja)
-    // Retorna true si tocó el suelo demasiado lento (fin del turno)
-    bool rebotarBorde(double anchoEscenario, double altoEscenario) {
+    bool rebotarBorde(double anchoEscenario, double altoSuelo) {
         if (posicion.x <= 0) {
             posicion.x = 0;
             velocidad.x = -velocidad.x;
@@ -66,34 +62,39 @@ public:
         if (posicion.y <= 0) {
             posicion.y = 0;
             velocidad.y = -velocidad.y;
-        } else if (posicion.y + alto >= altoEscenario) {
-            posicion.y = altoEscenario - alto;
-            velocidad.y = -velocidad.y * 0.85; // Ligera amortiguación en suelo para evitar rebotes infinitos
-            velocidad.x *= 0.90;
-            if (velocidad.magnitud() < 15.0) {
-                return true; // Detener proyectil si casi no se mueve
+        } else if (posicion.y + alto >= altoSuelo) {
+            posicion.y = altoSuelo - alto;
+            velocidad.y = -velocidad.y * 0.75;
+            velocidad.x *= 0.85;
+            if (velocidad.magnitud() < 20.0) {
+                return true;
             }
         }
         actualizarGrafico();
         return false;
     }
 
-    // Rebote inelástico contra infraestructura[cite: 4]
     void rebotarObstaculo(int lado, double e) {
-        if (lado == 1) { // Impacto lateral (izq/der)
+        if (lado == 1) {
             velocidad.x = -e * velocidad.x;
-            posicion.x += (velocidad.x > 0) ? 4.0 : -4.0;
-        } else if (lado == 2) { // Impacto vertical (arriba/abajo)
+            posicion.x += (velocidad.x > 0) ? 5.0 : -5.0;
+        } else if (lado == 2) {
             velocidad.y = -e * velocidad.y;
-            posicion.y += (velocidad.y > 0) ? 4.0 : -4.0;
+            posicion.y += (velocidad.y > 0) ? 5.0 : -5.0;
         }
         actualizarGrafico();
     }
 
     void paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*) override {
         if (!activo) return;
-        painter->setBrush(Qt::red);
-        painter->setPen(QPen(Qt::darkRed, 2));
+        // Diseño tipo esfera metálica oscura con brillo
+        QRadialGradient grad(ancho * 0.35, alto * 0.35, ancho * 0.7);
+        grad.setColorAt(0, QColor(255, 140, 0));
+        grad.setColorAt(0.4, QColor(210, 40, 30));
+        grad.setColorAt(1, QColor(40, 40, 45));
+
+        painter->setBrush(grad);
+        painter->setPen(QPen(Qt::black, 1.5));
         painter->drawEllipse(boundingRect());
     }
 };

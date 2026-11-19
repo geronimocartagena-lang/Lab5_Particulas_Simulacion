@@ -11,8 +11,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     setCentralWidget(central);
 
     QVBoxLayout* layoutPrincipal = new QVBoxLayout(central);
-
-    // Barra superior de controles
     QHBoxLayout* barraControles = new QHBoxLayout();
 
     lblTurno = new QLabel("Turno: JUGADOR 1 (Izquierda)");
@@ -33,7 +31,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
     btnReiniciar = new QPushButton("Reiniciar Partida");
     btnReiniciar->setStyleSheet("background-color: #e66100; color: white; font-weight: bold; padding: 6px 14px;");
-    btnReiniciar->setVisible(false); // Oculto hasta que alguien gane
+    btnReiniciar->setVisible(false);
 
     barraControles->addWidget(lblTurno);
     barraControles->addStretch();
@@ -44,7 +42,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     barraControles->addWidget(btnDisparar);
     barraControles->addWidget(btnReiniciar);
 
-    // Área gráfica del juego
     escena = new QGraphicsScene(this);
     vista = new QGraphicsView(escena);
     vista->setRenderHint(QPainter::Antialiasing);
@@ -52,8 +49,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     layoutPrincipal->addLayout(barraControles);
     layoutPrincipal->addWidget(vista);
 
-    // Inicializar controlador del juego
     controlador = new ControladorJuego(escena, this);
+
+    // Conectar el cambio de ángulo en el SpinBox para rotar el cañón en tiempo real
+    connect(spinAngulo, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+            controlador, &ControladorJuego::actualizarAnguloCanon);
 
     connect(btnDisparar, &QPushButton::clicked, this, &MainWindow::onDispararClicked);
     connect(btnReiniciar, &QPushButton::clicked, this, &MainWindow::onReiniciarClicked);
@@ -73,11 +73,13 @@ void MainWindow::onDispararClicked() {
 void MainWindow::onReiniciarClicked() {
     btnReiniciar->setVisible(false);
     btnDisparar->setEnabled(true);
+    spinAngulo->setValue(45.0);
     controlador->reiniciarJuego();
 }
 
 void MainWindow::onTurnoCambiado(int turno) {
     btnDisparar->setEnabled(true);
+    controlador->actualizarAnguloCanon(spinAngulo->value());
     if (turno == 1) {
         lblTurno->setText("Turno: JUGADOR 1 (Izquierda)");
         lblTurno->setStyleSheet("font-weight: bold; font-size: 14px; color: #1a5fb4;");
@@ -91,5 +93,5 @@ void MainWindow::onJuegoTerminado(int ganador) {
     QMessageBox::information(this, "¡Victoria!",
                              QString("¡El JUGADOR %1 ha destruido al rival y ganado la partida!").arg(ganador));
     btnDisparar->setEnabled(false);
-    btnReiniciar->setVisible(true); // Mostrar botón para volver a jugar
+    btnReiniciar->setVisible(true);
 }

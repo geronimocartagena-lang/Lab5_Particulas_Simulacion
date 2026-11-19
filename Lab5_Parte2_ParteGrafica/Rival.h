@@ -29,18 +29,24 @@ public:
     }
 
     void paint(QPainter* painter, const QStyleOptionGraphicsItem*, QWidget*) override {
-        painter->setPen(QPen(eliminado ? Qt::red : Qt::black, 2));
-
-        // Dibujo esquemático del muñeco (Stickman) como en la Figura 2
         double midX = ancho / 2.0;
-        painter->drawEllipse(QPointF(midX, 12), 8, 8);               // Cabeza
-        painter->drawLine(QPointF(midX, 20), QPointF(midX, 42));     // Torso
-        painter->drawLine(QPointF(midX - 12, 28), QPointF(midX + 12, 28)); // Brazos
-        painter->drawLine(QPointF(midX, 42), QPointF(midX - 10, 58)); // Pierna izq
-        painter->drawLine(QPointF(midX, 42), QPointF(midX + 10, 58)); // Pierna der
+        QColor colorTraje = (jugadorDuenio == 1) ? QColor(26, 95, 180) : QColor(192, 28, 40);
 
-        painter->setFont(QFont("Arial", 8));
-        painter->drawText(QRectF(0, 60, ancho, 15), Qt::AlignCenter, eliminado ? "ELIMINADO" : "Rival");
+        painter->setBrush(eliminado ? Qt::gray : colorTraje);
+        painter->setPen(QPen(Qt::black, 1.5));
+
+        // Torso
+        painter->drawRoundedRect(QRectF(midX - 9, 28, 18, 26), 4, 4);
+        // Cabeza + Casco
+        painter->setBrush(QColor(245, 203, 167));
+        painter->drawEllipse(QPointF(midX, 18), 7, 7);
+        painter->setBrush(eliminado ? Qt::darkGray : colorTraje.darker(120));
+        painter->drawChord(QRectF(midX - 8, 10, 16, 12), 0, 180 * 16);
+
+        // Piernas
+        painter->setPen(QPen(Qt::black, 2.5));
+        painter->drawLine(QPointF(midX - 4, 54), QPointF(midX - 6, 74));
+        painter->drawLine(QPointF(midX + 4, 54), QPointF(midX + 6, 74));
     }
 };
 
