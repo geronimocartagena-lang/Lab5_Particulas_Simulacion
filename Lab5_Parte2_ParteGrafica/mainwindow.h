@@ -20,6 +20,7 @@ private:
     QDoubleSpinBox* spinAngulo;
     QDoubleSpinBox* spinVelocidad;
     QPushButton* btnDisparar;
+    QPushButton* btnReiniciar; // 4. Nuevo botón de reinicio
 
 public:
     MainWindow(QWidget* parent = nullptr);
@@ -27,6 +28,7 @@ public:
 
 private slots:
     void onDispararClicked();
+    void onReiniciarClicked();
     void onTurnoCambiado(int turno);
     void onJuegoTerminado(int ganador);
 };

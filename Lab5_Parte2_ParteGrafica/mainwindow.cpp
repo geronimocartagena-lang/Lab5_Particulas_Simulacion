@@ -31,6 +31,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     btnDisparar = new QPushButton("¡Lanzar Proyectil!");
     btnDisparar->setStyleSheet("background-color: #26a269; color: white; font-weight: bold; padding: 6px 14px;");
 
+    btnReiniciar = new QPushButton("Reiniciar Partida");
+    btnReiniciar->setStyleSheet("background-color: #e66100; color: white; font-weight: bold; padding: 6px 14px;");
+    btnReiniciar->setVisible(false); // Oculto hasta que alguien gane
+
     barraControles->addWidget(lblTurno);
     barraControles->addStretch();
     barraControles->addWidget(lblAng);
@@ -38,6 +42,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     barraControles->addWidget(lblVel);
     barraControles->addWidget(spinVelocidad);
     barraControles->addWidget(btnDisparar);
+    barraControles->addWidget(btnReiniciar);
 
     // Área gráfica del juego
     escena = new QGraphicsScene(this);
@@ -51,6 +56,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     controlador = new ControladorJuego(escena, this);
 
     connect(btnDisparar, &QPushButton::clicked, this, &MainWindow::onDispararClicked);
+    connect(btnReiniciar, &QPushButton::clicked, this, &MainWindow::onReiniciarClicked);
     connect(controlador, &ControladorJuego::turnoCambiado, this, &MainWindow::onTurnoCambiado);
     connect(controlador, &ControladorJuego::juegoTerminado, this, &MainWindow::onJuegoTerminado);
 }
@@ -62,6 +68,12 @@ void MainWindow::onDispararClicked() {
         btnDisparar->setEnabled(false);
         controlador->iniciarTurno(spinAngulo->value(), spinVelocidad->value());
     }
+}
+
+void MainWindow::onReiniciarClicked() {
+    btnReiniciar->setVisible(false);
+    btnDisparar->setEnabled(true);
+    controlador->reiniciarJuego();
 }
 
 void MainWindow::onTurnoCambiado(int turno) {
@@ -79,4 +91,5 @@ void MainWindow::onJuegoTerminado(int ganador) {
     QMessageBox::information(this, "¡Victoria!",
                              QString("¡El JUGADOR %1 ha destruido al rival y ganado la partida!").arg(ganador));
     btnDisparar->setEnabled(false);
+    btnReiniciar->setVisible(true); // Mostrar botón para volver a jugar
 }

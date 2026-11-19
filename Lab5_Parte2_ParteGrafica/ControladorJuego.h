@@ -15,7 +15,7 @@ private:
     QGraphicsScene* escena;
     QTimer* timer;
 
-    int turnoActual; // 1 = Jugador Izquierda | 2 = Jugador Derecha
+    int turnoActual;
     double dt;
     double gravedad;
     double factorDanio;
@@ -33,11 +33,12 @@ public:
     explicit ControladorJuego(QGraphicsScene* scene, QObject* parent = nullptr);
 
     int getTurnoActual() const { return turnoActual; }
-    bool hayDisparoEnCurso() const { return proyectilActivo->isActivo(); }
+    bool hayDisparoEnCurso() const { return proyectilActivo && proyectilActivo->isActivo(); }
 
     void iniciarTurno(double angulo, double velocidad);
     void cambiarTurno();
     int verificarVictoria() const;
+    void reiniciarJuego();
 
 private slots:
     void actualizarFisica();
