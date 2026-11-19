@@ -27,6 +27,9 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         ObjetoJuego.h
         Proyectil.h
         Estructura.h
+        Rival.h
+        ControladorJuego.h
+        ControladorJuego.cpp
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET Lab5_Parte2_ParteGrafica APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
